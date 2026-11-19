@@ -1,31 +1,41 @@
-// Neo-brutalist colour re-theme, applied to the built CSS / HTML in dist/.
+// "Aurora" colour re-theme, applied to the built CSS / HTML / page scripts in dist/.
 //
 // The source pages keep their original colours; this step rewrites colour values only
 // (never selectors, markup or text) so the makeover survives a fresh import from the live site.
 //
-//   teal / cyan accents  -> electric lime on dark surfaces, cobalt on light ones
-//   navy / deep teal     -> cobalt
-//   orange               -> vivid orange
-//   white / light greys  -> off-white
-//   charcoal / near-black-> black
+//   teal / cyan accents  -> lavender glow on dark surfaces, violet on light ones
+//   teal fills           -> bright lavender (the skin layers a violet-pink-peach gradient on top)
+//   navy / deep teal     -> indigo
+//   orange               -> coral
+//   white / light greys  -> lilac-tinted whites
+//   charcoal / near-black-> aubergine black
 //
 // Whether an accent sits on a dark or a light surface is tracked with inherited custom
-// properties (--nb-accent, --nb-white, --nb-line, --nb-orange-t): every rule that paints a
-// solid background also sets them for its subtree.
+// properties (--nb-accent, --nb-white, --nb-fg, --nb-line, --nb-orange-t and the three heading
+// gradient stops --nb-ga/gb/gc): every rule that paints a solid background also sets them for
+// its subtree.
 import fs from 'node:fs/promises';
 import path from 'node:path';
 
 export const PALETTE = {
-  lime: '#c6ff3d', limePale: '#eef9c4', cobalt: '#1f3fff', orange: '#ff5a1f',
-  paper: '#f4f1e8', paper2: '#e8e4d6', ink: '#0a0a0a', ink2: '#171717',
+  glow: '#c9a8ff',       // accent on dark surfaces
+  violet: '#6d28d9',     // accent on light surfaces
+  brand: '#b9a2ff',      // accent fills (buttons, badges) - carries dark text
+  mid: '#7c3aed',        // accent inside gradients / illustrations
+  soft: '#a78bfa',
+  tint: '#e9dfff', tintPale: '#f5f0ff',
+  indigo: '#2e1a78', blue: '#4c2fc4',
+  orange: '#ff6b4a',
+  paper: '#fbf9ff', paper2: '#f1ebfb', line: '#e3daf5',
+  ink: '#0b0714', ink2: '#16102a', inkLine: '#2f2647',
 };
 const P = PALETTE;
 
 const CTX = {
-  dark: `--nb-accent:${P.lime};--nb-white:${P.paper};--nb-fg:${P.paper};--nb-line:${P.paper};--nb-pop:${P.lime};--nb-orange-t:#ff6a2b`,
-  light: `--nb-accent:${P.cobalt};--nb-white:${P.paper};--nb-fg:${P.ink};--nb-line:${P.ink};--nb-pop:${P.ink};--nb-orange-t:#e8470c`,
-  lime: `--nb-accent:${P.cobalt};--nb-white:${P.ink};--nb-fg:${P.ink};--nb-line:${P.ink};--nb-pop:${P.cobalt};--nb-orange-t:${P.ink}`,
-  orange: `--nb-accent:${P.ink};--nb-white:${P.ink};--nb-fg:${P.ink};--nb-line:${P.ink};--nb-pop:${P.cobalt};--nb-orange-t:${P.ink}`,
+  dark: `--nb-accent:${P.glow};--nb-white:${P.paper};--nb-fg:${P.paper};--nb-line:${P.inkLine};--nb-orange-t:#ff9a7a;--nb-ga:#d9c8ff;--nb-gb:#ff9bdc;--nb-gc:#ffc296`,
+  light: `--nb-accent:${P.violet};--nb-white:${P.paper};--nb-fg:${P.ink};--nb-line:${P.line};--nb-orange-t:#e2552f;--nb-ga:#6d28d9;--nb-gb:#db2777;--nb-gc:#f26a2e`,
+  brand: `--nb-accent:${P.indigo};--nb-white:${P.ink};--nb-fg:${P.ink};--nb-line:#8f76e0;--nb-orange-t:${P.ink};--nb-ga:${P.ink};--nb-gb:${P.indigo};--nb-gc:${P.ink}`,
+  orange: `--nb-accent:${P.ink};--nb-white:${P.ink};--nb-fg:${P.ink};--nb-line:#d9512f;--nb-orange-t:${P.ink};--nb-ga:${P.ink};--nb-gb:${P.ink};--nb-gc:${P.ink}`,
 };
 
 // ---- colour parsing -----------------------------------------------------------------
@@ -86,35 +96,35 @@ function mapColor(tok, role, name = '') {
   let out = null;
   switch (role) {
     case 'bg':
-      out = { white: P.paper, paper: P.paper2, ink: P.ink, ink2: P.ink2, teal: P.lime, mint: P.lime, mintPale: P.limePale,
-        deep: P.cobalt, blue: P.cobalt, orange: P.orange }[f];
+      out = { white: P.paper, paper: P.paper2, ink: P.ink, ink2: P.ink2, teal: P.brand, mint: P.tint, mintPale: P.tintPale,
+        deep: P.indigo, blue: P.blue, orange: P.orange }[f];
       break;
     case 'grad':
-      out = { white: P.paper, paper: P.paper2, ink: P.ink, ink2: P.ink2, teal: P.cobalt, mint: P.cobalt, mintPale: P.paper,
-        deep: P.cobalt, blue: P.cobalt, orange: P.orange }[f];
+      out = { white: P.paper, paper: P.paper2, ink: P.ink, ink2: P.ink2, teal: P.mid, mint: P.soft, mintPale: P.paper,
+        deep: P.indigo, blue: P.mid, orange: P.orange }[f];
       break;
     case 'text':
       if (f === 'white') return solid ? `var(--nb-white,${P.paper})` : withAlpha(P.paper, a);
-      if (f === 'teal' || f === 'blue') return solid ? `var(--nb-accent,${P.cobalt})` : withAlpha(P.cobalt, a);
-      if (f === 'orange') return solid ? `var(--nb-orange-t,#e8470c)` : withAlpha(P.orange, a);
-      out = { ink: P.ink, ink2: '#1c1c1c', mint: P.lime, mintPale: P.lime, deep: P.cobalt }[f];
+      if (f === 'teal' || f === 'blue') return solid ? `var(--nb-accent,${P.violet})` : withAlpha(P.mid, a);
+      if (f === 'orange') return solid ? `var(--nb-orange-t,#e2552f)` : withAlpha(P.orange, a);
+      out = { ink: P.ink, ink2: '#1d1730', mint: P.glow, mintPale: P.glow, deep: P.violet }[f];
       break;
     case 'border':
-      if ((f === 'paper' || f === 'silver') && solid) return `var(--nb-line,${P.ink})`;
-      if (f === 'teal' || f === 'mint' || f === 'blue') return solid ? `var(--nb-accent,${P.cobalt})` : withAlpha(P.cobalt, a);
-      out = { ink: P.ink, ink2: P.ink, deep: P.cobalt, orange: P.orange, mintPale: P.ink }[f];
+      if ((f === 'paper' || f === 'silver') && solid) return `var(--nb-line,${P.line})`;
+      if (f === 'teal' || f === 'mint' || f === 'blue') return solid ? `var(--nb-accent,${P.violet})` : withAlpha(P.mid, a);
+      out = { ink: P.ink, ink2: P.inkLine, deep: P.violet, orange: P.orange, mintPale: P.line }[f];
       break;
     case 'svg':
-      out = { white: P.paper, paper: P.paper2, ink: P.ink, ink2: P.ink2, teal: P.cobalt, blue: P.cobalt, mint: P.lime,
-        mintPale: P.limePale, deep: P.cobalt, orange: P.orange }[f];
+      out = { white: P.paper, paper: P.paper2, ink: P.ink, ink2: P.ink2, teal: P.mid, blue: P.mid, mint: P.glow,
+        mintPale: P.tintPale, deep: P.indigo, orange: P.orange }[f];
       break;
     case 'var': {
       const isLine = /line|border|rule|divider|stroke|track/i.test(name);
-      if (isLine && solid && (f === 'paper' || f === 'silver')) return `var(--nb-line,${P.ink})`;
+      if (isLine && solid && (f === 'paper' || f === 'silver')) return `var(--nb-line,${P.line})`;
       if (isLine && (f === 'white' || f === 'paper' || f === 'silver' || f === 'grey')) return tok;
-      if (f === 'teal' || f === 'blue') return solid ? `var(--nb-accent,${P.cobalt})` : withAlpha(P.cobalt, a);
-      out = { white: P.paper, paper: P.paper2, ink: P.ink, ink2: P.ink2, mint: P.lime, mintPale: P.limePale,
-        deep: P.cobalt, orange: P.orange }[f];
+      if (f === 'teal' || f === 'blue') return solid ? `var(--nb-accent,${P.violet})` : withAlpha(P.mid, a);
+      out = { white: P.paper, paper: P.paper2, ink: P.ink, ink2: P.ink2, mint: P.glow, mintPale: P.tintPale,
+        deep: P.violet, orange: P.orange }[f];
       break;
     }
   }
@@ -219,7 +229,7 @@ function surfaceOf(value) {
       all.some(x => ['ink', 'ink2', 'deep'].includes(family(x[0], x[1], x[2]))) ? 'dark' : null;
   }
   return { ink: 'dark', ink2: 'dark', deep: 'dark', blue: 'dark', white: 'light', paper: 'light', mintPale: 'light', silver: 'light',
-    teal: 'lime', mint: 'lime', orange: 'orange' }[f] || null;
+    teal: 'brand', mint: 'light', orange: 'orange' }[f] || null;
 }
 
 export function themeDecls(body) {
@@ -257,7 +267,7 @@ export function themeDecls(body) {
     return lead + rawProp + ':' + v;
   });
   let res = out.join(';');
-  const extra = surface ? CTX[surface] : whiteText ? `--nb-accent:${P.lime};--nb-line:${P.paper};--nb-orange-t:#ff6a2b` : '';
+  const extra = surface ? CTX[surface] : whiteText ? `--nb-accent:${P.glow};--nb-line:${P.inkLine};--nb-orange-t:#ff9a7a;--nb-ga:#d9c8ff;--nb-gb:#ff9bdc;--nb-gc:#ffc296` : '';
   if (extra) res = res.replace(/;?\s*$/, '') + ';' + extra;
   else if (!changed) return body;
   return res;
@@ -284,7 +294,7 @@ export function themeHtml(html) {
 // and a quoted colour assigned to a canvas paint property.
 const JS_DECL = /(^|[;{\s"'`])(background(?:-color)?|color|border(?:-(?:top|right|bottom|left))?(?:-color)?|outline(?:-color)?|fill|stroke)(\s*:\s*)([^;{}"'`\n\\]*?(?:#[0-9a-fA-F]{3,8}\b|rgba?\([^()]*\))[^;{}"'`\n\\]*)/g;
 const JS_CANVAS = /\b(fillStyle|strokeStyle|shadowColor)(\s*=\s*)(["'])(#[0-9a-fA-F]{3,8}|rgba?\([^()]*\))\3/g;
-const CANVAS = { white: P.paper, ink: P.ink, ink2: P.ink2, teal: P.lime, mint: P.lime, mintPale: P.lime, deep: P.cobalt, blue: P.cobalt, orange: P.orange };
+const CANVAS = { white: P.paper, ink: P.ink, ink2: P.ink2, teal: P.glow, mint: P.glow, mintPale: P.glow, deep: P.mid, blue: P.mid, orange: P.orange };
 
 export function themeJs(js) {
   LOCAL = new Map();
@@ -301,7 +311,7 @@ export function themeJs(js) {
 }
 
 // ---- dist walker --------------------------------------------------------------------
-const SKIP = new Set(['neobrutal.css', 'neobrutal.js']);
+const SKIP = new Set(['aurora.css', 'aurora.js']);
 
 export async function themeDist(dist) {
   let css = 0, html = 0, js = 0;

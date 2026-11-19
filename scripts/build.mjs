@@ -136,7 +136,7 @@ for (const [from, to] of Object.entries(site.redirects || {})) {
   redirects++;
 }
 
-// --- neo-brutalist colour theme (THEME=off builds the original palette) -----------
+// --- colour theme (THEME=off builds the original palette) -----------
 if (process.env.THEME !== 'off') {
   const t = await themeDist(DIST);
   console.log(`Themed ${t.css} stylesheets, ${t.html} pages and ${t.js} scripts`);

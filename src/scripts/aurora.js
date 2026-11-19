@@ -1,11 +1,11 @@
 /*
- * Neo-brutalist skin: behaviour.
+ * "Aurora" skin: behaviour.
  *
  * Purely presentational. It never moves, removes or rewrites content; it only
- *   - tags existing elements (nb-card, nb-btn, nb-pill, nb-img, nb-band, nb-prose-link)
- *     so styles/neobrutal.css can restyle the site's many hand-built blocks,
+ *   - tags existing elements (nb-card, nb-btn, nb-pill, nb-img, nb-band, nb-prose-link, nb-gradtext)
+ *     so styles/aurora.css can restyle the site's many hand-built blocks,
  *   - plays a one-off entrance animation as tagged elements scroll into view,
- *   - adds an aria-hidden, pointer-events:none layer of animated shapes.
+ *   - adds an aria-hidden, pointer-events:none layer of animated shapes and a pointer glow.
  * No dependencies. Respects prefers-reduced-motion.
  */
 (function () {
@@ -30,6 +30,7 @@
     bodyScroller = (ho === 'hidden' || ho === 'clip') && (bo === 'auto' || bo === 'scroll') && body.scrollHeight > body.clientHeight + 40;
   }
   function scrollTop() { return bodyScroller ? body.scrollTop : window.scrollY; }
+  var maxSeen = 0;                       // lowest page position that has been on screen
 
   // ---- helpers ---------------------------------------------------------------
   function rgba(str) {
@@ -47,6 +48,8 @@
     return px(cs.borderTopWidth) >= 1 && px(cs.borderRightWidth) >= 1 && px(cs.borderBottomWidth) >= 1 && px(cs.borderLeftWidth) >= 1 &&
       cs.borderTopStyle !== 'none' && cs.borderLeftStyle !== 'none' && rgba(cs.borderTopColor)[3] >= 0.1;
   }
+  // the build maps accent fills to this lavender; those surfaces carry the gradient
+  function isBrand(c) { return c[3] >= 0.9 && Math.abs(c[0] - 185) < 9 && Math.abs(c[1] - 162) < 9 && Math.abs(c[2] - 255) < 9; }
   function ownText(el) { return (el.textContent || '').replace(/\s+/g, ' ').trim(); }
 
   var CARD_TAGS = { DIV: 1, ARTICLE: 1, LI: 1, A: 1, SECTION: 1, ASIDE: 1, FIGURE: 1, FORM: 1, BLOCKQUOTE: 1, DETAILS: 1 };
@@ -95,7 +98,10 @@
       if ((tag === 'A' || tag === 'BUTTON' || el.getAttribute('role') === 'button') && h >= 26 && h <= 86 && w >= 64 && w <= 480 &&
           (bg[3] >= 0.6 || bordered) && cs.display !== 'inline') {
         txt = ownText(el);
-        if (txt.length >= 2 && txt.length <= 48 && !el.querySelector('img,picture,video')) item.cls.push('nb-btn');
+        if (txt.length >= 2 && txt.length <= 48 && !el.querySelector('img,picture,video')) {
+          item.cls.push('nb-btn');
+          if (isBrand(bg)) item.cls.push('nb-grad');
+        }
       }
 
       // pills / tags
@@ -121,6 +127,7 @@
           if (!dup) {
             cardRects.set(el, r);
             item.cls.push('nb-card');
+            if (cs.backgroundImage === 'none') item.cls.push('nb-spot');
             item.fx = 'nb-fx-rise';
             if (h < 640 && (tag === 'A' || cs.cursor === 'pointer' || el.querySelector('a[href]'))) item.cls.push('nb-hot');
           }
@@ -166,6 +173,24 @@
       todo.push({ el: hd, r: hr, top: hr.top + sy, cls: [], fx: 'nb-fx-slide' });
     }
 
+    var h1s = body.querySelectorAll('h1');
+    for (var g = 0; g < h1s.length; g++) {
+      var h1 = h1s[g];
+      if (h1.__nbTagged || seen.has(h1)) continue;
+      var gr = h1.getBoundingClientRect();
+      if (gr.width < 24 || gr.height < 10) continue;
+      seen.add(h1);
+      if (h1.closest('#hwnav') || h1.querySelector('img,svg,picture,video,canvas,br + br')) continue;
+      var gcs = getComputedStyle(h1);
+      if (gcs.backgroundImage !== 'none' || rgba(gcs.color)[3] < 0.9) continue;
+      var kids = h1.querySelectorAll('*'), plain = true;
+      for (var q2 = 0; q2 < kids.length; q2++) {
+        var kcs = getComputedStyle(kids[q2]);
+        if (kcs.display !== 'inline' || kcs.backgroundImage !== 'none' || kcs.position === 'absolute') { plain = false; break; }
+      }
+      if (plain) todo.push({ el: h1, r: gr, top: gr.top + sy, cls: ['nb-gradtext'] });
+    }
+
     // write phase
     var siblingIndex = new Map();
     for (var j = 0; j < todo.length; j++) {
@@ -176,21 +201,14 @@
       if (it.band) {
         bands.push(e);
         var b = it.band;
-        if (b.solid && !b.img && b.h <= 1400) {       // long reading areas stay plain
-          if (b.l > 0.6) {
-            var li = lightBands++ % 4;
-            if (li === 0) e.classList.add('nb-pat-dots');
-            else if (li === 1 && b.h <= 900 && b.l > 0.8) e.classList.add('nb-block-lime');
-            else if (li === 2) e.classList.add('nb-pat-grid');
-          } else if (b.l < 0.2) {
-            var di = darkBands++ % 3;
-            if (di === 0) e.classList.add('nb-pat-grid');
-            else if (di === 2) e.classList.add('nb-pat-stripes');
-          }
+        if (b.solid && !b.img && b.h <= 3200) {
+          if (b.l > 0.6) e.classList.add(lightBands++ % 2 ? 'nb-mesh-b' : 'nb-mesh-a');
+          else if (b.l < 0.2) e.classList.add(['nb-aura-a', 'nb-aura-b', 'nb-aura-c'][darkBands++ % 3]);
         }
       }
 
-      if (it.fx && !reduce && io && it.r.top > vh * 0.92 && !e.closest('.nb-wait') && !e.closest(SKIP_MOTION) && !e.matches(OWN_REVEAL)) {
+      // only hold back what the visitor has not reached yet
+      if (it.fx && !reduce && io && it.r.top > vh * 0.92 && it.top > maxSeen && !e.closest('.nb-wait') && !e.closest(SKIP_MOTION) && !e.matches(OWN_REVEAL)) {
         var ecs = getComputedStyle(e);
         if (parseFloat(ecs.opacity) >= 0.99 && ecs.animationName === 'none') {
           var parent = e.parentElement;
@@ -240,18 +258,18 @@
   });
 
   // ---- animated shapes -----------------------------------------------------------
-  var INK = '#0a0a0a', LIME = '#c6ff3d', COBALT = '#1f3fff', ORANGE = '#ff5a1f', PAPER = '#f4f1e8';
-  var S = ' stroke="' + INK + '" stroke-width="3" stroke-linejoin="miter"';
+  var GRAD = '<defs><linearGradient id="GID" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#b9a2ff"/>' +
+    '<stop offset=".55" stop-color="#ff7ac8"/><stop offset="1" stop-color="#ffb36b"/></linearGradient></defs>';
+  var SPARK = 'M50 2C54 34 66 46 98 50 66 54 54 66 50 98 46 66 34 54 2 50 34 46 46 34 50 2Z';
   var SHAPES = [
-    ['nb-a-spin', '<polygon points="50,2 60,34 92,22 70,48 98,66 64,66 62,98 44,72 18,92 26,60 2,44 34,40"' + ' fill="' + LIME + '"' + S + '/>'],
-    ['nb-a-bob', '<circle cx="50" cy="50" r="44" fill="' + COBALT + '"' + S + '/><path d="M50 6a44 44 0 0 1 0 88z" fill="' + PAPER + '"' + S + '/>'],
-    ['nb-a-march', '<polyline points="4,70 24,30 44,70 64,30 84,70 98,44" fill="none" stroke="' + ORANGE + '" stroke-width="9" stroke-linejoin="miter"/>'],
-    ['nb-a-wobble', '<path d="M36 4h28v32h32v28H64v32H36V64H4V36h32z" fill="' + PAPER + '"' + S + '/>'],
-    ['nb-a-spin-r', '<rect x="6" y="6" width="88" height="88" fill="' + COBALT + '"' + S + '/><rect x="28" y="28" width="44" height="44" fill="' + LIME + '"' + S + '/>'],
-    ['nb-a-wobble', '<polygon points="50,6 96,92 4,92" fill="' + ORANGE + '"' + S + '/>'],
-    ['nb-a-blink', [18, 50, 82].map(function (y) { return [18, 50, 82].map(function (x) { return '<rect x="' + (x - 9) + '" y="' + (y - 9) + '" width="18" height="18" fill="' + LIME + '"' + S + '/>'; }).join(''); }).join('')],
-    ['nb-a-bob', '<path d="M4 38h52V12l40 38-40 38V62H4z" fill="' + LIME + '"' + S + '/>'],
-    ['nb-a-spin', '<path d="M50 4l12 34 34 12-34 12-12 34-12-34L4 50l34-12z" fill="' + ORANGE + '"' + S + '/>'],
+    ['nb-a-twinkle', '<path d="' + SPARK + '" fill="url(#GID)"/>'],
+    ['nb-a-float', '<circle cx="50" cy="50" r="37" fill="none" stroke="url(#GID)" stroke-width="13"/>'],
+    ['nb-a-spin', '<path d="M50 6c24 0 42 16 42 42 0 28-20 46-44 46S8 78 8 52 26 6 50 6z" fill="url(#GID)"/>'],
+    ['nb-a-spin-r', '<rect x="8" y="34" width="84" height="32" rx="16" fill="url(#GID)"/>'],
+    ['nb-a-pulse', '<circle cx="20" cy="50" r="12" fill="url(#GID)"/><circle cx="50" cy="50" r="12" fill="url(#GID)"/><circle cx="80" cy="50" r="12" fill="url(#GID)"/>'],
+    ['nb-a-float', '<path d="M62 6a46 46 0 1 0 32 60A38 38 0 0 1 62 6z" fill="url(#GID)"/>'],
+    ['nb-a-twinkle', '<path d="' + SPARK + '" fill="url(#GID)" transform="translate(4 30) scale(.62)"/><path d="' + SPARK + '" fill="url(#GID)" transform="translate(60 2) scale(.36)"/>'],
+    ['nb-a-spin', '<path d="M50 4 61 39 96 50 61 61 50 96 39 61 4 50 39 39Z" fill="none" stroke="url(#GID)" stroke-width="9" stroke-linejoin="round"/>'],
   ];
   var layer = null, shapes = [], shapeIO = null, shapeTimer = 0;
 
@@ -279,7 +297,8 @@
     }
     var vw = root.clientWidth, sy = window.scrollY;
     var size = vw >= 1400 ? 78 : vw >= 1024 ? 58 : vw >= 768 ? 44 : 34;
-    var gutter = vw >= 1400 ? Math.max(14, vw * 0.018) : 8;
+    // room for the shape to rotate and scale without reaching the viewport edge
+    var gutter = Math.max(vw >= 1400 ? vw * 0.018 : 8, size * 0.42 + 4);
     var ys = [];
     for (var i = 0; i < bands.length; i++) {
       var b = bands[i];
@@ -299,7 +318,7 @@
         var def = SHAPES[n % SHAPES.length];
         sh = doc.createElement('span');
         sh.className = 'nb-shape nb-off';
-        sh.innerHTML = '<svg viewBox="0 0 100 100" class="' + def[0] + '" focusable="false">' + def[1] + '</svg>';
+        sh.innerHTML = '<svg viewBox="0 0 100 100" class="' + def[0] + '" focusable="false">' + (GRAD + def[1]).replace(/GID/g, 'nbg' + n) + '</svg>';
         sh.style.setProperty('--k', ((n % 3) - 1) * 0.05);
         layer.appendChild(sh);
         shapes.push(sh);
@@ -324,6 +343,7 @@
 
   var ticking = false;
   function onScroll() {
+    maxSeen = Math.max(maxSeen, scrollTop() + window.innerHeight);
     if (ticking) return;
     ticking = true;
     requestAnimationFrame(function () {
@@ -349,7 +369,7 @@
   doc.addEventListener('scrollend', sweep, { passive: true, capture: true });
 
   // ---- button press burst -----------------------------------------------------------
-  var BURST = [LIME, COBALT, ORANGE, PAPER];
+  var BURST = ['#b9a2ff', '#ff7ac8', '#ffb36b', '#ffffff'];
   doc.addEventListener('pointerdown', function (ev) {
     if (reduce || !ev.target || !ev.target.closest) return;
     var btn = ev.target.closest('.nb-btn, .elementor-button, .hs-button, input[type="submit"], button[type="submit"]');
@@ -358,16 +378,42 @@
     for (var i = 0; i < 6; i++) {
       var bit = doc.createElement('span');
       var ang = (Math.PI * 2 * i) / 6 + Math.random() * 0.6;
-      var dist = 36 + Math.random() * 30;
-      bit.style.cssText = 'position:absolute;width:10px;height:10px;border:2px solid ' + INK + ';background:' + BURST[i % 4] +
+      var dist = 44 + Math.random() * 40;
+      bit.style.cssText = 'position:absolute;width:9px;height:9px;border-radius:50%;box-shadow:0 0 12px ' + BURST[i % 4] + ';background:' + BURST[i % 4] +
         ';left:' + (ev.pageX - 5) + 'px;top:' + (ev.pageY - 5) + 'px;pointer-events:none;';
       layer.appendChild(bit);
       bit.animate([
         { transform: 'translate(0,0) rotate(0deg)', opacity: 1 },
         { transform: 'translate(' + Math.cos(ang) * dist + 'px,' + Math.sin(ang) * dist + 'px) rotate(200deg)', opacity: 0 },
-      ], { duration: 420, easing: 'cubic-bezier(.2,.9,.3,1)' }).onfinish = (function (b) { return function () { b.remove(); }; })(bit);
+      ], { duration: 620, easing: 'cubic-bezier(.22,1,.36,1)' }).onfinish = (function (b) { return function () { b.remove(); }; })(bit);
     }
   }, { passive: true });
+
+  // ---- pointer glow + card spotlight (fine pointers only) -------------------------------
+  if (!reduce && window.matchMedia && matchMedia('(hover: hover) and (pointer: fine)').matches) {
+    var glow = doc.createElement('div');
+    glow.className = 'nb-cursor';
+    glow.setAttribute('aria-hidden', 'true');
+    body.appendChild(glow);
+    var gx = 0, gy = 0, gQueued = false, spot = null;
+    doc.addEventListener('pointermove', function (ev) {
+      gx = ev.clientX; gy = ev.clientY;
+      spot = ev.target && ev.target.closest ? ev.target.closest('.nb-spot') : null;
+      if (gQueued) return;
+      gQueued = true;
+      requestAnimationFrame(function () {
+        gQueued = false;
+        glow.style.transform = 'translate3d(' + gx + 'px,' + gy + 'px,0)';
+        glow.classList.add('nb-on');
+        if (spot) {
+          var sr = spot.getBoundingClientRect();
+          spot.style.setProperty('--mx', Math.round(gx - sr.left) + 'px');
+          spot.style.setProperty('--my', Math.round(gy - sr.top) + 'px');
+        }
+      });
+    }, { passive: true });
+    doc.documentElement.addEventListener('pointerleave', function () { glow.classList.remove('nb-on'); });
+  }
 
   // ---- lifecycle ------------------------------------------------------------------------
   var scanTimer = 0;

@@ -36,9 +36,9 @@ src/
     wp-globals.css           WordPress / Elementor global variables
     hubspot-forms.css        base form styles
     replica.css              replica-only adjustments
-    neobrutal.css            neo-brutalist skin (loaded last)
+    aurora.css               "Aurora" skin (loaded last)
   scripts/
-    neobrutal.js             skin behaviour: tagging, scroll reveals, animated shapes
+    aurora.js                skin behaviour: tagging, scroll reveals, animated shapes
     widgets.js               video, nav menu, carousels, tabs, tables
     hubspot-forms.js         local form renderer (see "Forms")
     blog-filters.js          blog sort / filter / pagination
@@ -55,18 +55,19 @@ scripts/
   import/                  one-off importers (crawl, extract, posts index)
 ```
 
-## Neo-brutalist skin
+## "Aurora" skin
 
-The build applies a visual-only makeover (electric lime, cobalt, vivid orange, off-white, black)
-on top of the mirrored pages. Content, markup, section order and behaviour are untouched.
+The build applies a visual-only makeover (aubergine black and lilac whites with a
+violet / pink / peach gradient system) on top of the mirrored pages. Content, markup,
+section order and behaviour are untouched.
 
 - `scripts/theme.mjs` runs at the end of `npm run build` and remaps colour values in the built
   CSS, inline styles and script-injected styles. `src/` keeps the original colours, so a fresh
   import is re-skinned automatically.
-- `src/styles/neobrutal.css` (loaded last) adds the type, chunky borders, offset shadows,
-  patterns, hover states and motion.
-- `src/scripts/neobrutal.js` tags existing blocks (cards, buttons, bands, photos) for that
-  stylesheet, plays scroll-in animations and adds an `aria-hidden` layer of animated shapes.
+- `src/styles/aurora.css` (loaded last) adds the type, glass cards, gradient buttons, glow,
+  section lighting, hover states and motion.
+- `src/scripts/aurora.js` tags existing blocks (cards, buttons, bands, photos) for that
+  stylesheet, plays scroll-in animations and adds an `aria-hidden` layer of animated shapes and a pointer glow.
   It respects `prefers-reduced-motion`.
 
 `THEME=off npm run build` builds with the original palette (the stylesheet and script still load;
